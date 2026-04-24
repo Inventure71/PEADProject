@@ -24,7 +24,7 @@ class = banana
 
 run_complex_example = True
 
-epochs = 5
+epochs = 1
 learning_rate = 0.1
 
 features = []
