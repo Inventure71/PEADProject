@@ -1,5 +1,5 @@
 import numpy as np
-from ExampleData import get_complex_example, get_simple_example
+from _ExampleData import get_complex_example, get_simple_example
 
 """
 Features:
