@@ -62,7 +62,7 @@ def train_hebbian_network(epochs, learning_rate, training_data):
 
 def predict(weights, inputs):
     inputs = np.array(inputs)
-    output = np.dot(inputs, weights)   # shape (2,) -> scores per class
+    output = np.dot(inputs, weights) # one score per class
     return classes[np.argmax(output)]
 
 def simple_example():
