@@ -21,24 +21,19 @@ class = banana
 [1, 0, 1] -> [1, 0]
 """
 
+run_complex_example = True
+
 epochs = 5
 learning_rate = 0.1
 
-features = ["yellow", "round", "long"]
-classes = ["banana", "apple"]
-
-training_data = [
-    # features: yellow, round, long | class
-    ([1, 0, 1], "banana"),
-    ([1, 0, 1], "banana"),
-    ([0, 1, 0], "apple"),
-    ([0, 1, 0], "apple"),
-]
-
-# Rows = features, columns = classes
-weights = np.zeros((3, 2))
+features = []
+classes = []
+training_data = []
 
 def train_hebbian_network(epochs, learning_rate, training_data):
+    # Rows = features, columns = classes
+    weights = np.zeros((len(features), len(classes)))
+
     for epoch in range(epochs):
         print(f"Epoch {epoch + 1}")
 
@@ -49,7 +44,14 @@ def train_hebbian_network(epochs, learning_rate, training_data):
             class_index = classes.index(label) # here we find the class index
             output[class_index] = 1 # here we set the value at the class index to 1 (identified)
 
-            weights += learning_rate * np.outer(inputs, output) #{insert math} 
+            # Example for banana:
+            # inputs = [1, 0, 1], output = [1, 0]
+            # np.outer(inputs, output) =
+            # [[1, 0],
+            #  [0, 0],
+            #  [1, 0]]
+            # So yellow->banana and long->banana increase by learning_rate.
+            weights += learning_rate * np.outer(inputs, output)
 
         print(weights)
 
@@ -58,4 +60,73 @@ def train_hebbian_network(epochs, learning_rate, training_data):
     print(weights)
     return weights
 
-weights = train_hebbian_network(epochs, learning_rate, training_data)
+def predict(weights, inputs):
+    inputs = np.array(inputs)
+    output = np.dot(inputs, weights)   # shape (2,) -> scores per class
+    return classes[np.argmax(output)]
+
+def simple_example():
+    global features, classes, training_data # just to be sure
+    features = ["yellow", "round", "long"]
+    classes = ["banana", "apple"]
+    training_data = [
+        ([1, 0, 1], "banana"),
+        ([1, 0, 1], "banana"),
+        ([0, 1, 0], "apple"),
+    ]
+
+    weights = train_hebbian_network(epochs, learning_rate, training_data)
+
+    print(predict(weights, [1, 0, 1])) # should be banana
+    print(predict(weights, [0, 1, 0])) # should be apple
+
+    return weights
+
+def complex_example():
+    global features, classes, training_data # just to be sure
+
+    features = [
+        "yellow",
+        "red",
+        "green",
+        "round",
+        "long",
+        "sweet",
+        "crunchy",
+        "soft",
+    ]
+
+    classes = [
+        "banana",
+        "apple",
+        "pear",
+    ]
+
+    training_data = [
+        # yellow, red, green, round, long, sweet, crunchy, soft | class
+
+        ([1, 0, 0, 0, 1, 1, 0, 1], "banana"),
+        ([1, 0, 0, 0, 1, 1, 0, 1], "banana"),
+        ([1, 0, 0, 0, 1, 1, 0, 1], "banana"),
+
+        ([0, 1, 0, 1, 0, 1, 1, 0], "apple"),
+        ([0, 1, 0, 1, 0, 1, 1, 0], "apple"),
+        ([0, 0, 1, 1, 0, 1, 1, 0], "apple"),  # green apple
+
+        ([0, 0, 1, 0, 1, 1, 0, 1], "pear"),
+        ([0, 0, 1, 0, 1, 1, 0, 1], "pear"),
+        ([1, 0, 1, 0, 1, 1, 0, 1], "pear"),  # yellow-green pear
+    ]
+
+    weights = train_hebbian_network(epochs, learning_rate, training_data)
+
+    print(predict(weights, [1, 0, 0, 0, 1, 1, 0, 1])) # should be banana
+    print(predict(weights, [0, 1, 0, 1, 0, 1, 1, 0])) # should be apple
+    print(predict(weights, [0, 0, 1, 0, 1, 1, 0, 1])) # should be pear
+
+    return weights
+
+if run_complex_example:
+    weights = complex_example()
+else:
+    weights = simple_example()
