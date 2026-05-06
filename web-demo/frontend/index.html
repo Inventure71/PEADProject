@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Beyond Backpropagation Web Demo</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23157a72'/%3E%3Cpath d='M8 18h6v6h4V8h-4v6H8z' fill='white'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-block">
+          <p class="eyebrow">PEAD Project Demo</p>
+          <h1>Beyond Backpropagation</h1>
+        </div>
+
+        <nav class="scene-tabs" aria-label="Demo sections">
+          <button class="scene-tab active" type="button" data-scene="fruit">
+            <span>01</span>
+            Fruit Weights
+          </button>
+          <button class="scene-tab" type="button" data-scene="oja">
+            <span>02</span>
+            Oja / PCA
+          </button>
+          <button class="scene-tab" type="button" data-scene="forgetting">
+            <span>03</span>
+            Forgetting
+          </button>
+          <button class="scene-tab" type="button" data-scene="playground">
+            <span>04</span>
+            Playground
+          </button>
+        </nav>
+
+        <div class="sidebar-note" id="sceneSummary">
+          Loading experiment data...
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="workspace-header">
+          <div>
+            <p class="eyebrow" id="sceneKicker">Interactive learning rule</p>
+            <h2 id="sceneTitle">Loading</h2>
+          </div>
+          <div class="mode-switch" id="modeSwitch" aria-label="Fruit learning mode">
+            <button class="mode-button active" type="button" data-mode="hebbian">Hebbian</button>
+            <button class="mode-button" type="button" data-mode="backprop">Backprop</button>
+          </div>
+        </header>
+
+        <section class="visual-stage" aria-label="Algorithm visualization">
+          <canvas id="demoCanvas"></canvas>
+          <div class="playground-panel hidden" id="playgroundPanel" aria-label="Model performance playground"></div>
+          <div class="loading-overlay" id="loadingOverlay">Preparing calculations</div>
+        </section>
+
+        <section class="control-strip" aria-label="Step controls">
+          <button class="icon-button" type="button" id="resetButton" title="Reset">Reset</button>
+          <button class="icon-button" type="button" id="prevButton" title="Previous step">Prev</button>
+          <button class="primary-button" type="button" id="playButton">Play</button>
+          <button class="icon-button" type="button" id="nextButton" title="Next step">Next</button>
+          <input id="stepSlider" type="range" min="0" value="0" />
+          <div class="step-readout" id="stepReadout">0 / 0</div>
+        </section>
+      </main>
+
+      <aside class="inspector">
+        <div class="inspector-section">
+          <p class="eyebrow">Current Step</p>
+          <h3 id="stepTitle">Loading</h3>
+          <p id="stepNarrative">The backend is calculating the training histories.</p>
+        </div>
+
+        <div class="inspector-section">
+          <p class="eyebrow">Calculation</p>
+          <div class="formula-box" id="formulaBox"></div>
+        </div>
+
+        <div class="inspector-section">
+          <p class="eyebrow">Values</p>
+          <div class="value-grid" id="valueGrid"></div>
+        </div>
+      </aside>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
