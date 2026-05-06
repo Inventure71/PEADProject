@@ -384,8 +384,10 @@ function drawFruit() {
 
   const leftX = state.width * 0.22;
   const rightX = state.width * 0.76;
-  const top = 150;
-  const bottom = state.height - 76;
+  const topBandBottom = 142;
+  const bottomBandTop = state.height - 68;
+  const top = topBandBottom + 42;
+  const bottom = bottomBandTop - 58;
   const featureGap = (bottom - top) / (fruit.features.length - 1);
   const classGap = (bottom - top) / (fruit.classes.length - 1);
 
@@ -504,25 +506,24 @@ function drawFruit() {
     ctx.fillText(classNode.label, classNode.x + 40, classNode.y + 4);
   });
 
-  drawFruitStepRail(step, activatedConnections, changedConnections);
-  drawFruitLegend();
+  drawFruitTopBand(step, activatedConnections, changedConnections);
 
   ctx.save();
   ctx.fillStyle = "rgba(255, 250, 240, 0.86)";
   ctx.strokeStyle = colors.hairline;
-  roundRect(28, state.height - 58, state.width - 56, 34, 8);
+  roundRect(28, bottomBandTop, state.width - 56, 34, 8);
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = colors.ink;
   ctx.font = "700 13px Inter, system-ui, sans-serif";
-  ctx.fillText(`Active features: ${step.active_features.join(", ")}`, 44, state.height - 36);
+  ctx.fillText(`Active features: ${step.active_features.join(", ")}`, 44, bottomBandTop + 22);
   ctx.textAlign = "right";
   ctx.fillText(
     isPassPhase
       ? `Pass-through: ${activatedConnections.length} weights read`
       : `${step.repeat_label}; prediction: ${step.prediction}`,
     state.width - 44,
-    state.height - 36,
+    bottomBandTop + 22,
   );
   ctx.restore();
 }
@@ -540,12 +541,27 @@ function labelledFruitConnections(changedConnections) {
   return [...positive.slice(0, 2), ...negative.slice(0, 2)];
 }
 
-function drawFruitStepRail(step, activatedConnections, changedConnections) {
-  const isPassPhase = step.visual_phase === "pass";
+function drawFruitTopBand(step, activatedConnections, changedConnections) {
   const x = 28;
-  const y = 70;
+  const y = 68;
+  const width = state.width - 56;
+  const height = 68;
+
+  ctx.save();
+  ctx.fillStyle = "rgba(255, 250, 240, 0.86)";
+  ctx.strokeStyle = "rgba(221, 212, 194, 0.86)";
+  roundRect(x, y, width, height, 8);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+
+  drawFruitStepRail(step, activatedConnections, changedConnections, x + 8, y + 8, width - 16);
+  drawFruitLegend(x + 8, y + 42);
+}
+
+function drawFruitStepRail(step, activatedConnections, changedConnections, x = 28, y = 70, railWidth = state.width - 56) {
+  const isPassPhase = step.visual_phase === "pass";
   const gap = 6;
-  const railWidth = state.width - 56;
   const chipWidth = (railWidth - gap * 3) / 4;
   const firstDelta = changedConnections[0]?.delta || 0;
   const changeWord =
@@ -583,9 +599,7 @@ function drawFruitStepRail(step, activatedConnections, changedConnections) {
   );
 }
 
-function drawFruitLegend() {
-  const x = 28;
-  const y = 105;
+function drawFruitLegend(x = 28, y = 105) {
   ctx.save();
   ctx.fillStyle = "rgba(255, 250, 240, 0.88)";
   ctx.strokeStyle = "rgba(221, 212, 194, 0.9)";
@@ -661,6 +675,12 @@ function plotMapper(points, box) {
   };
 }
 
+function magnitudeArrowLength(norm, maxLogNorm, baseLength) {
+  const logNorm = Math.max(0, Math.log10(Math.max(norm, 1e-12)));
+  const normalized = maxLogNorm > 0 ? clamp(logNorm / maxLogNorm, 0, 1) : 0;
+  return baseLength * (0.55 + normalized * 0.6);
+}
+
 function drawOja() {
   const oja = state.data.oja;
   const step = currentStep();
@@ -710,6 +730,9 @@ function drawOja() {
   const pca = oja.pca_vector;
   const pcaLength = Math.min(box.width, box.height) * 0.44;
   const pureWeight = step.pure_weight_unit;
+  const maxLogNorm = oja.pure_hebbian_final_log10_norm || 1;
+  const pureLength = magnitudeArrowLength(step.pure_weight_norm, maxLogNorm, pcaLength);
+  const ojaLength = magnitudeArrowLength(step.weight_norm, maxLogNorm, pcaLength);
   ctx.strokeStyle = "rgba(91, 90, 166, 0.72)";
   ctx.lineWidth = 3.2;
   ctx.setLineDash([8, 8]);
@@ -729,27 +752,27 @@ function drawOja() {
   drawArrow(
     cx,
     cy,
-    cx + pureWeight[0] * pcaLength * 1.08,
-    cy - pureWeight[1] * pcaLength * 1.08,
+    cx + pureWeight[0] * pureLength,
+    cy - pureWeight[1] * pureLength,
     colors.berry,
     3,
   );
   ctx.fillStyle = colors.berry;
   ctx.font = "800 12px Inter, system-ui, sans-serif";
   ctx.fillText(
-    `pure Hebbian: same direction, ||w||=${formatMagnitude(step.pure_weight_norm)}`,
-    clamp(cx + pureWeight[0] * pcaLength * 1.08 + 12, box.x + 8, box.x + box.width - 260),
-    clamp(cy - pureWeight[1] * pcaLength * 1.08 + 18, box.y + 14, box.y + box.height - 10),
+    `pure Hebbian: log-length from ||w||=${formatMagnitude(step.pure_weight_norm)}`,
+    clamp(cx + pureWeight[0] * pureLength + 12, box.x + 8, box.x + box.width - 300),
+    clamp(cy - pureWeight[1] * pureLength + 18, box.y + 14, box.y + box.height - 10),
   );
 
   const weight = step.new_weight_unit;
-  drawArrow(cx, cy, cx + weight[0] * pcaLength * 0.82, cy - weight[1] * pcaLength * 0.82, colors.teal, 5);
+  drawArrow(cx, cy, cx + weight[0] * ojaLength, cy - weight[1] * ojaLength, colors.teal, 5);
   ctx.fillStyle = colors.teal;
   ctx.font = "800 12px Inter, system-ui, sans-serif";
   ctx.fillText(
-    "Oja learned weight",
-    clamp(cx + weight[0] * pcaLength * 0.82 + 12, box.x + 8, box.x + box.width - 130),
-    clamp(cy - weight[1] * pcaLength * 0.82 + 14, box.y + 14, box.y + box.height - 10),
+    `Oja bounded: log-length from ||w||=${formatNumber(step.weight_norm, 3)}`,
+    clamp(cx + weight[0] * ojaLength + 12, box.x + 8, box.x + box.width - 250),
+    clamp(cy - weight[1] * ojaLength + 14, box.y + 14, box.y + box.height - 10),
   );
 
   ctx.fillStyle = colors.ink;
@@ -757,7 +780,7 @@ function drawOja() {
   const angleText = `Same direction: Oja ${formatNumber(step.angle_degrees, 2)} deg from PCA; pure ${formatNumber(
     step.pure_angle_degrees,
     2,
-  )} deg. Different size: Oja ${formatNumber(step.weight_norm, 3)}, pure ${formatMagnitude(step.pure_weight_norm)}.`;
+  )} deg. Arrow length is log-scaled from ||w||: Oja ${formatNumber(step.weight_norm, 3)}, pure ${formatMagnitude(step.pure_weight_norm)}.`;
   if (compactLegend) {
     ctx.fillText(fitText(angleText, box.width), box.x, box.y + box.height + 26);
     drawNormTrace(oja.steps, state.stepIndex, box.x, box.y + box.height + 44, box.width, 34);
@@ -884,20 +907,26 @@ function drawForgetting() {
         x: 38,
         y: 92,
         width: state.width - 76,
-        height: 240,
+        height: 212,
       }
     : {
         x: 32,
         y: 92,
         width: Math.min(360, state.width * 0.38),
-        height: state.height - 150,
+        height: state.height - 214,
       };
   drawTinyNetwork(step.weights, networkBox, previousStep?.weights || null);
+  drawNetworkLegend(
+    networkBox.x,
+    networkBox.y + networkBox.height + 22,
+    networkBox.width,
+    previousStep !== null,
+  );
 
   const chartBox = isNarrow
     ? {
         x: 66,
-        y: networkBox.y + networkBox.height + 78,
+        y: networkBox.y + networkBox.height + 84,
         width: state.width - 104,
         height: Math.max(190, state.height - (networkBox.y + networkBox.height + 228)),
       }
@@ -905,7 +934,7 @@ function drawForgetting() {
         x: networkBox.x + networkBox.width + 46,
         y: 96,
         width: state.width - (networkBox.x + networkBox.width + 84),
-        height: state.height - 260,
+        height: state.height - 284,
       };
   drawAccuracyChart(standardSteps, state.stepIndex, chartBox, ewcSteps);
 
@@ -1010,7 +1039,6 @@ function drawTinyNetwork(weights, box, previousWeights = null) {
   if (hiddenHidden) ctx.fillText(compact ? "H2" : "Hidden 2", box.x + box.width * 0.58, box.y - 14);
   ctx.fillText(compact ? "Out" : "Output", box.x + box.width - 72, box.y - 14);
 
-  drawNetworkLegend(box, previousWeights !== null);
 }
 
 function weightDelta(weight, previousMatrix, rowIndex, columnIndex) {
@@ -1055,15 +1083,14 @@ function drawWeightLine(from, to, weight, alpha, delta = 0, highlighted = false)
   ctx.restore();
 }
 
-function drawNetworkLegend(box, hasPrevious) {
-  const x = box.x + 4;
-  const y = box.y + box.height - 6;
+function drawNetworkLegend(x, y, width, hasPrevious) {
   const message = hasPrevious ? "network: teal up, red down" : "network: thicker line = stronger weight";
+  const legendWidth = Math.min(285, width);
 
   ctx.save();
   ctx.fillStyle = "rgba(255, 250, 240, 0.9)";
   ctx.strokeStyle = "rgba(221, 212, 194, 0.85)";
-  roundRect(x, y - 28, Math.min(285, box.width - 8), 28, 8);
+  roundRect(x, y - 28, legendWidth, 28, 8);
   ctx.fill();
   ctx.stroke();
   ctx.strokeStyle = colors.teal;
@@ -1296,12 +1323,12 @@ function updateInspector() {
   if (state.scene === "oja") {
     stepTitle.textContent = `Oja update ${step.step}`;
     stepNarrative.textContent =
-      "The teal and red arrows point almost the same way because both methods find the high-variance PCA direction. The difference is length: pure Hebbian keeps strengthening the same weight until ||w|| explodes, while Oja keeps it bounded.";
+      "The teal and red arrows point almost the same way because both methods find the high-variance PCA direction. Their drawn lengths are log-scaled from ||w||: pure Hebbian keeps strengthening the same weight until ||w|| explodes, while Oja keeps it bounded.";
     formulaBox.innerHTML = formulaLines([
       "Pure Hebbian: dw = eta * y * x",
       "Oja: dw = eta * (y*x - y^2*w)",
       "-y^2*w is the brake: it prevents weights from growing forever.",
-      "Main plot: same direction. Bottom chart: different weight size.",
+      "Main plot: direction plus log-scaled length. Bottom chart: weight size over time.",
     ]);
     valueGrid.innerHTML = valueRows([
       ["what it learns", "first principal component"],

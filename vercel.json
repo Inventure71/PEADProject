@@ -1,0 +1,43 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "functions": {
+    "api/*.py": {
+      "includeFiles": "{web-demo/backend/**,_ExampleData.py,web_demo_vercel.py}"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/web-demo/frontend/index.html"
+    },
+    {
+      "source": "/app.js",
+      "destination": "/web-demo/frontend/app.js"
+    },
+    {
+      "source": "/styles.css",
+      "destination": "/web-demo/frontend/styles.css"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    }
+  ]
+}
