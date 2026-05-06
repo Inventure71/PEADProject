@@ -57,7 +57,7 @@ const sceneCopy = {
     kicker: "Normalized Hebbian learning",
     title: "Oja's Rule as Online PCA",
     summary:
-      "This is the teacher's Hebbian-network requirement: one unsupervised Oja neuron sees points one at a time and learns the same direction as batch PCA.",
+      "Pure Hebbian and Oja learn almost the same direction, so the important difference is stability: Oja keeps the weight size bounded while pure Hebbian explodes.",
   },
   forgetting: {
     kicker: "Sequential backpropagation vs EWC",
@@ -82,6 +82,15 @@ function formatPercent(value, digits = 1) {
   return `${formatNumber(value * 100, digits)}%`;
 }
 
+function formatMagnitude(value) {
+  if (typeof value !== "number") return value;
+  const absValue = Math.abs(value);
+  if (absValue >= 10000 || (absValue > 0 && absValue < 0.001)) {
+    return value.toExponential(2).replace("e+", "e");
+  }
+  return formatNumber(value, 3);
+}
+
 function forgettingTakeaway(payload) {
   const standard = payload.summary.standard;
   const ewc = payload.summary.ewc;
@@ -97,7 +106,9 @@ function ojaTakeaway(payload) {
   return `This is the teacher's Hebbian-network requirement: one Oja neuron learns from unlabeled points one at a time. The angle to PCA starts at ${formatNumber(
     initialAngle,
     1,
-  )} degrees and ends at ${formatNumber(payload.final_angle_degrees, 2)} degrees.`;
+  )} degrees and ends at ${formatNumber(payload.final_angle_degrees, 2)} degrees, while pure Hebbian weight size grows to ${formatMagnitude(
+    payload.pure_hebbian_final_norm,
+  )}.`;
 }
 
 function clamp(value, min, max) {
@@ -657,13 +668,14 @@ function drawOja() {
 
   drawPanelTitle("Teacher's Hebbian network", `Step ${step.step}: Oja is normalized Hebbian learning, not fruit classification`);
   const compactLegend = state.width < 640;
+  const legendHeight = compactLegend ? 84 : 58;
   drawOjaLegend(28, 69, compactLegend);
 
   const box = {
     x: 58,
-    y: compactLegend ? 142 : 116,
+    y: 69 + legendHeight + 15,
     width: state.width - 116,
-    height: state.height - (compactLegend ? 230 : 188),
+    height: state.height - (69 + legendHeight + 15) - 88,
   };
   const map = plotMapper(oja.points, box);
   const cx = box.x + box.width / 2;
@@ -697,6 +709,7 @@ function drawOja() {
 
   const pca = oja.pca_vector;
   const pcaLength = Math.min(box.width, box.height) * 0.44;
+  const pureWeight = step.pure_weight_unit;
   ctx.strokeStyle = "rgba(91, 90, 166, 0.72)";
   ctx.lineWidth = 3.2;
   ctx.setLineDash([8, 8]);
@@ -713,37 +726,53 @@ function drawOja() {
     clamp(cy - pca[1] * pcaLength - 8, box.y + 14, box.y + box.height - 10),
   );
 
+  drawArrow(
+    cx,
+    cy,
+    cx + pureWeight[0] * pcaLength * 1.08,
+    cy - pureWeight[1] * pcaLength * 1.08,
+    colors.berry,
+    3,
+  );
+  ctx.fillStyle = colors.berry;
+  ctx.font = "800 12px Inter, system-ui, sans-serif";
+  ctx.fillText(
+    `pure Hebbian: same direction, ||w||=${formatMagnitude(step.pure_weight_norm)}`,
+    clamp(cx + pureWeight[0] * pcaLength * 1.08 + 12, box.x + 8, box.x + box.width - 260),
+    clamp(cy - pureWeight[1] * pcaLength * 1.08 + 18, box.y + 14, box.y + box.height - 10),
+  );
+
   const weight = step.new_weight_unit;
-  drawArrow(cx, cy, cx + weight[0] * pcaLength * 0.92, cy - weight[1] * pcaLength * 0.92, colors.teal, 5);
+  drawArrow(cx, cy, cx + weight[0] * pcaLength * 0.82, cy - weight[1] * pcaLength * 0.82, colors.teal, 5);
   ctx.fillStyle = colors.teal;
   ctx.font = "800 12px Inter, system-ui, sans-serif";
   ctx.fillText(
     "Oja learned weight",
-    clamp(cx + weight[0] * pcaLength * 0.92 + 12, box.x + 8, box.x + box.width - 130),
-    clamp(cy - weight[1] * pcaLength * 0.92 + 14, box.y + 14, box.y + box.height - 10),
+    clamp(cx + weight[0] * pcaLength * 0.82 + 12, box.x + 8, box.x + box.width - 130),
+    clamp(cy - weight[1] * pcaLength * 0.82 + 14, box.y + 14, box.y + box.height - 10),
   );
 
   ctx.fillStyle = colors.ink;
   ctx.font = "700 14px Inter, system-ui, sans-serif";
-  const angleText = `Current: ${formatNumber(step.angle_degrees, 2)} deg; final: ${formatNumber(
-    oja.final_angle_degrees,
+  const angleText = `Same direction: Oja ${formatNumber(step.angle_degrees, 2)} deg from PCA; pure ${formatNumber(
+    step.pure_angle_degrees,
     2,
-  )} deg`;
+  )} deg. Different size: Oja ${formatNumber(step.weight_norm, 3)}, pure ${formatMagnitude(step.pure_weight_norm)}.`;
   if (compactLegend) {
     ctx.fillText(fitText(angleText, box.width), box.x, box.y + box.height + 26);
-    drawAngleTrace(oja.steps, state.stepIndex, box.x, box.y + box.height + 44, box.width, 34);
+    drawNormTrace(oja.steps, state.stepIndex, box.x, box.y + box.height + 44, box.width, 34);
   } else {
-    const traceWidth = Math.min(220, box.width * 0.42);
-    ctx.fillText(fitText(angleText, box.width - traceWidth - 18), box.x, box.y + box.height + 38);
-    drawAngleTrace(oja.steps, state.stepIndex, box.x + box.width - traceWidth, box.y + box.height + 14, traceWidth, 42);
+    const traceWidth = Math.min(300, box.width * 0.5);
+    ctx.fillText(fitText(angleText, box.width - traceWidth - 18), box.x, box.y + box.height + 42);
+    drawNormTrace(oja.steps, state.stepIndex, box.x + box.width - traceWidth, box.y + box.height + 14, traceWidth, 56);
   }
   ctx.restore();
 }
 
 function drawOjaLegend(x, y, compact = false) {
   const width = Math.min(state.width - 56, compact ? 420 : 560);
-  const height = compact ? 58 : 30;
-  const rowY = compact ? [y + 15, y + 42] : [y + 15, y + 15];
+  const height = compact ? 84 : 58;
+  const rowY = compact ? [y + 15, y + 42, y + 69] : [y + 15, y + 42, y + 42];
   ctx.save();
   ctx.fillStyle = "rgba(255, 250, 240, 0.9)";
   ctx.strokeStyle = "rgba(221, 212, 194, 0.9)";
@@ -770,42 +799,71 @@ function drawOjaLegend(x, y, compact = false) {
   ctx.lineWidth = 2.4;
   ctx.setLineDash([6, 5]);
   ctx.beginPath();
-  ctx.moveTo(x + (compact ? 18 : 282), rowY[1]);
-  ctx.lineTo(x + (compact ? 50 : 314), rowY[1]);
+  ctx.moveTo(x + 18, rowY[1]);
+  ctx.lineTo(x + 50, rowY[1]);
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.fillStyle = colors.muted;
-  ctx.fillText("PCA from full dataset", x + (compact ? 58 : 322), rowY[1] + 4);
+  ctx.fillText("PCA from full dataset", x + 58, rowY[1] + 4);
 
   ctx.strokeStyle = colors.teal;
   ctx.lineWidth = 3.2;
   ctx.beginPath();
-  ctx.moveTo(x + (compact ? 220 : 456), rowY[1]);
-  ctx.lineTo(x + (compact ? 256 : 492), rowY[1]);
+  ctx.moveTo(x + (compact ? 220 : 240), rowY[1]);
+  ctx.lineTo(x + (compact ? 256 : 276), rowY[1]);
   ctx.stroke();
-  ctx.fillText("Oja weight", x + (compact ? 264 : 500), rowY[1] + 4);
+  ctx.fillText("Oja stable", x + (compact ? 264 : 284), rowY[1] + 4);
+
+  ctx.strokeStyle = colors.berry;
+  ctx.lineWidth = 2.6;
+  ctx.beginPath();
+  ctx.moveTo(x + (compact ? 18 : 388), rowY[2]);
+  ctx.lineTo(x + (compact ? 50 : 424), rowY[2]);
+  ctx.stroke();
+  ctx.fillText("pure norm grows", x + (compact ? 58 : 432), rowY[2] + 4);
   ctx.restore();
 }
 
-function drawAngleTrace(steps, currentIndex, x, y, width, height) {
+function drawNormTrace(steps, currentIndex, x, y, width, height) {
   const visible = steps.slice(0, currentIndex + 1);
-  const maxAngle = Math.max(20, ...visible.map((step) => step.angle_degrees));
+  const maxLogNorm = Math.max(1, ...steps.map((step) => step.pure_weight_log10_norm || 0));
+  const yForNorm = (norm) => {
+    const logNorm = Math.max(0, Math.log10(Math.max(norm, 1e-12)));
+    return y + height - (logNorm / maxLogNorm) * height;
+  };
+
   ctx.save();
   ctx.strokeStyle = colors.hairline;
   ctx.strokeRect(x, y, width, height);
+
   ctx.beginPath();
   visible.forEach((step, index) => {
     const px = x + (index / Math.max(1, steps.length - 1)) * width;
-    const py = y + height - (step.angle_degrees / maxAngle) * height;
+    const py = yForNorm(step.weight_norm);
+    if (index === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  });
+  ctx.strokeStyle = colors.teal;
+  ctx.lineWidth = 2.4;
+  ctx.stroke();
+
+  ctx.beginPath();
+  visible.forEach((step, index) => {
+    const px = x + (index / Math.max(1, steps.length - 1)) * width;
+    const py = yForNorm(step.pure_weight_norm);
     if (index === 0) ctx.moveTo(px, py);
     else ctx.lineTo(px, py);
   });
   ctx.strokeStyle = colors.berry;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.4;
   ctx.stroke();
+
   ctx.fillStyle = colors.muted;
   ctx.font = "11px Inter, system-ui, sans-serif";
-  ctx.fillText("angle over time", x, y - 6);
+  ctx.fillText("weight size, log scale", x, y - 6);
+  ctx.textAlign = "right";
+  ctx.fillText(`1e${formatNumber(maxLogNorm, 0)}`, x + width - 4, y + 12);
+  ctx.fillText("1", x + width - 4, y + height - 4);
   ctx.restore();
 }
 
@@ -1238,12 +1296,12 @@ function updateInspector() {
   if (state.scene === "oja") {
     stepTitle.textContent = `Oja update ${step.step}`;
     stepNarrative.textContent =
-      "This is the actual normalized Hebbian demo. The neuron is not classifying fruit: it receives one unlabeled point, computes y, and updates its own weight using only x, y, and the old weight.";
+      "The teal and red arrows point almost the same way because both methods find the high-variance PCA direction. The difference is length: pure Hebbian keeps strengthening the same weight until ||w|| explodes, while Oja keeps it bounded.";
     formulaBox.innerHTML = formulaLines([
       "Pure Hebbian: dw = eta * y * x",
       "Oja: dw = eta * (y*x - y^2*w)",
       "-y^2*w is the brake: it prevents weights from growing forever.",
-      "If the demo is working, angle(Oja weight, PCA line) goes toward 0 degrees.",
+      "Main plot: same direction. Bottom chart: different weight size.",
     ]);
     valueGrid.innerHTML = valueRows([
       ["what it learns", "first principal component"],
@@ -1253,9 +1311,11 @@ function updateInspector() {
       ["old w", vectorText(step.old_weight)],
       ["y", step.output],
       ["Delta w", vectorText(step.weight_delta)],
-      ["new w", vectorText(step.new_weight)],
-      ["angle to PCA", `${formatNumber(step.angle_degrees, 2)} deg`],
-      ["final angle", `${formatNumber(state.data.oja.final_angle_degrees, 2)} deg`],
+      ["Oja norm", formatNumber(step.weight_norm, 4)],
+      ["Oja angle", `${formatNumber(step.angle_degrees, 2)} deg`],
+      ["pure norm", formatMagnitude(step.pure_weight_norm)],
+      ["pure angle", `${formatNumber(step.pure_angle_degrees, 2)} deg`],
+      ["pure final norm", formatMagnitude(state.data.oja.pure_hebbian_final_norm)],
     ]);
   }
 

@@ -60,12 +60,18 @@ class WebDemoExperimentTests(unittest.TestCase):
         self.assertIn("pca_vector", payload)
         self.assertIn("final_angle_degrees", payload)
         self.assertLess(payload["final_angle_degrees"], 8.0)
+        self.assertLess(payload["final_weight_norm"], 1.2)
+        self.assertGreater(payload["pure_hebbian_final_norm"], 1_000_000)
+        self.assertGreater(payload["pure_hebbian_final_norm"], payload["final_weight_norm"] * 1_000_000)
 
         final_step = payload["steps"][-1]
         self.assertIn("old_weight", final_step)
         self.assertIn("weight_delta", final_step)
         self.assertIn("new_weight", final_step)
         self.assertIn("angle_degrees", final_step)
+        self.assertIn("pure_weight_norm", final_step)
+        self.assertIn("pure_weight_unit", final_step)
+        self.assertIn("pure_angle_degrees", final_step)
 
     def test_forgetting_payload_matches_paper_demo_claims(self):
         from experiments.forgetting import build_forgetting_demo
